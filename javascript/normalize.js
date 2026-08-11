@@ -9,14 +9,23 @@
 import { ethers } from "ethers";
 
 export function normalize(rawTx) {
+  // Glacier / ChainKit SDK wraps the transaction under `nativeTransaction`
+  // with different field names. Support both that and the flat ethers.js
+  // format returned by direct RPC calls.
+  const tx = rawTx.nativeTransaction ?? rawTx;
+
+  const from = typeof tx.from === "object" ? tx.from?.address : tx.from;
+  const to = typeof tx.to === "object" ? tx.to?.address : tx.to;
+  const status = tx.txStatus ?? tx.status;
+
   return {
-    hash: rawTx.hash,
-    amount: Number(ethers.formatEther(rawTx.value ?? "0")),
-    token: rawTx.tokenSymbol ?? "AVAX",
-    from: rawTx.from,
-    to: rawTx.to,
-    timestamp: new Date((rawTx.timestamp ?? 0) * 1000).toISOString(),
-    status: rawTx.status === 1 ? "success" : "failed",
+    hash: tx.txHash ?? tx.hash,
+    amount: Number(ethers.formatEther(tx.value ?? "0")),
+    token: tx.tokenSymbol ?? "AVAX",
+    from,
+    to,
+    timestamp: new Date((tx.blockTimestamp ?? tx.timestamp ?? 0) * 1000).toISOString(),
+    status: status === 1 || status === "1" ? "success" : "failed",
   };
 }
 
